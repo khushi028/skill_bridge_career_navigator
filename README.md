@@ -9,6 +9,7 @@ Khushi Jain
 
 ## Scenario Chosen"
 "Skill-Bridge-Career-Navigator
+Drive Link: https://drive.google.com/file/d/1JdsMT6fOV7ULy49T1G3gBZ0wIjs7_qKM/view?usp=drivesdk
 
 It's an AI-Powered Career Analyzer — Resume intelligence tool that parses a PDF resume, infers best-fit job roles automatically, scores ATS compatibility, identifies skill gaps, generates a personalized learning roadmap, and produces role-specific interview questions. Optionally analyzes a GitHub profile or infers GitHub health from resume projects.
 
