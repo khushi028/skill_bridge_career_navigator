@@ -200,7 +200,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <button class="stab" onclick="showSection('improvements',this)">Improvements</button>
       <button class="stab" onclick="showSection('roadmap',this)">Road Map</button>
       <button class="stab" onclick="showSection('interview',this)">Interview Prep</button>
-      <button class="stab" onclick="showSection('github',this)">GitHub</button>
+      <button class="stab" id="tab-github" onclick="showSection('github',this)">GitHub</button>
     </div>
 
     <!-- ATS -->
@@ -264,8 +264,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <div class="sec-title">Interview Questions</div>
       <div class="sec-sub">Questions tailored to your resume and best-match role — with answer tips.</div>
       <div class="q-tabs">
-        <button class="qtab active" onclick="showQTab('tech',this)">Technical (5)</button>
-        <button class="qtab" onclick="showQTab('behav',this)">Behavioural (3)</button>
+        <button class="qtab active" onclick="showQTab('tech',this)" id="qtab-tech">Technical</button>
+        <button class="qtab" onclick="showQTab('behav',this)" id="qtab-behav">Behavioural</button>
       </div>
       <div class="q-panel active" id="q-tech"></div>
       <div class="q-panel" id="q-behav"></div>
@@ -364,6 +364,8 @@ async function runAnalysis() {
     }, i * 800);
   });
 
+  window._githubProvided = !!github;
+
   const form = new FormData();
   form.append('file', fileInput.files[0]);
   if (github) form.append('github_url', github);
@@ -386,6 +388,19 @@ async function runAnalysis() {
 function renderDashboard(d, detectedRole) {
   document.getElementById('nav-role').textContent = detectedRole;
   document.getElementById('dashboard-page').style.display = 'block';
+
+  // Hide GitHub tab if no URL was provided
+  const ghTab = document.getElementById('tab-github');
+  if (!window._githubProvided) {
+    ghTab.style.display = 'none';
+    document.getElementById('sec-github').classList.remove('active');
+    // If github was the active tab, switch to ATS
+    if (document.getElementById('sec-github').classList.contains('active')) {
+      showSection('ats', document.querySelector('.stab'));
+    }
+  } else {
+    ghTab.style.display = 'inline-block';
+  }
 
   // ATS ring
   const score = d.ats_score || 0;
@@ -456,26 +471,40 @@ function renderDashboard(d, detectedRole) {
         <div class="resource-list">
           ${(r.resources||[]).map(res => {
             const cls = platClass[(res.platform||'').toLowerCase()]||'';
-            return `<a href="${res.url||'#'}" target="_blank" class="resource-chip ${cls}">${res.platform} — ${res.title}</a>`;
+            // If url is # or empty, generate a real search URL
+            let url = res.url && res.url !== '#' ? res.url : null;
+            if (!url) {
+              const q = encodeURIComponent(res.title + ' ' + (res.platform||''));
+              url = `https://www.google.com/search?q=${q}`;
+            }
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="resource-chip ${cls}">${res.platform} — ${res.title}</a>`;
           }).join('')}
         </div>
       </div>
     </div>`).join('');
 
-  // Interview
+  // Interview — dynamic tab counts + render ALL questions returned
   const iq = d.interview_questions || {};
-  document.getElementById('q-tech').innerHTML  = (iq.technical||[]).map((q,i) => `
+  const techQs  = Array.isArray(iq.technical)   ? iq.technical   : [];
+  const behavQs = Array.isArray(iq.behavioural)  ? iq.behavioural : [];
+
+  // Update tab labels with real counts
+  document.getElementById('qtab-tech').textContent  = `Technical (${techQs.length})`;
+  document.getElementById('qtab-behav').textContent = `Behavioural (${behavQs.length})`;
+
+  document.getElementById('q-tech').innerHTML  = techQs.map((q,i) => `
     <div class="q-item">
       <div class="q-num">Question ${i+1} · Technical</div>
-      <div class="q-text">${q.question}</div>
-      <div class="q-tip">Tip: ${q.tip}</div>
-    </div>`).join('');
-  document.getElementById('q-behav').innerHTML = (iq.behavioural||[]).map((q,i) => `
+      <div class="q-text">${q.question || q}</div>
+      <div class="q-tip">Tip: ${q.tip || 'Prepare a specific example from your experience.'}</div>
+    </div>`).join('') || '<div class="q-item"><div class="q-text">No technical questions generated.</div></div>';
+
+  document.getElementById('q-behav').innerHTML = behavQs.map((q,i) => `
     <div class="q-item">
       <div class="q-num">Question ${i+1} · Behavioural</div>
-      <div class="q-text">${q.question}</div>
-      <div class="q-tip">Tip: ${q.tip}</div>
-    </div>`).join('');
+      <div class="q-text">${q.question || q}</div>
+      <div class="q-tip">Tip: ${q.tip || 'Use the STAR method: Situation, Task, Action, Result.'}</div>
+    </div>`).join('') || '<div class="q-item"><div class="q-text">No behavioural questions generated.</div></div>';
 
   // GitHub
   const gh = d.github_analysis || {};
@@ -524,6 +553,7 @@ function goBack() {
   document.getElementById('dashboard-page').style.display = 'none';
   document.getElementById('upload-page').style.display = 'flex';
   document.getElementById('loader-steps').innerHTML = '';
+  window._githubProvided = false;
 }
 </script>
 </body>
