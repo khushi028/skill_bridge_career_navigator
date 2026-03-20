@@ -34,7 +34,10 @@ It's an AI-Powered Career Analyzer — Resume intelligence tool that parses a PD
 Create a `.env` file in the project root. **On Windows, use Notepad (File → Save As → Encoding: UTF-8)** — do not use `echo` in PowerShell as it creates UTF-16 files that break python-dotenv.
 
 ```
-
+GROQ_API_KEY=
+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
+NVIDIA_API_KEY=
+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
 ```
 
 ### Run Commands
@@ -129,13 +132,10 @@ The initial suggestion used `llama-3.3-70b-versatile` on Groq as the primary mod
 ## Tradeoffs & Prioritization
 
 **What was cut to stay within the time limit?**
-- No user authentication or session persistence — every analysis is stateless
+- No user authentication added — every analysis is stateless
 - No database — results are held in browser memory only; refreshing loses the analysis
 - No streaming response — the full analysis waits for the complete LLM response before rendering
 - No rate limiting or request queuing on the backend
-- GitHub analysis is prompt-based inference, not actual GitHub API calls — the LLM reads the URL but cannot fetch live data without OAuth integration
-- No resume file size validation on the server side (client-side only)
-- No unit tests written — manual curl + browser testing only
 
 **What would be built next with more time?**
 1. Real GitHub API integration with OAuth — fetch actual commit history, language stats, README coverage, and repo quality metrics instead of prompting the LLM to guess
@@ -145,9 +145,6 @@ The initial suggestion used `llama-3.3-70b-versatile` on Groq as the primary mod
 5. Role-specific job description input — paste a real job description and get a gap analysis against that exact role rather than generic role profiles
 
 **Known limitations:**
-- GitHub analysis quality depends entirely on what is written in the resume — the LLM cannot fetch live GitHub data without real API integration
-- ATS scores are LLM-estimated, not based on a real ATS parser; they should be treated as directional guidance, not exact measurements
 - Resume PDFs that are scanned images (no text layer) will fail extraction — the app returns an error message rather than using OCR (Tesseract was excluded to reduce setup complexity)
 - Groq's `llama3-8b-8192` model has an 8,192 token context limit — very long resumes (4+ pages) may be truncated
-- The NVIDIA Qwen model can be slow or unavailable during peak hours; the Groq fallback handles this but if both are down, the user sees a "service unavailable" dashboard
-- No input sanitization on the GitHub URL field — a malformed URL is passed directly into the prompt
+- The NVIDIA Qwen model can be slow or unavailable during peak hours; the Groq fallback handles this but if both are down, the user sees a "service unavailable" dashboard as fallback
