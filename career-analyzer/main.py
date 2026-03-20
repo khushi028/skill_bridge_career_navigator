@@ -67,65 +67,98 @@ No GitHub URL provided. Infer github_analysis from resume projects:
 - note: "Estimated from resume — share your GitHub for accurate analysis"
 """
 
-    return f"""DOMAIN RULES — critical, follow strictly:
-- Read the resume carefully and identify the candidate's PRIMARY domain (e.g. if they have Python/ML/data skills → their domain is Data Science/ML, NOT DevOps or cloud)
-- missing_skills MUST only contain skills relevant to THEIR domain — do NOT suggest skills from unrelated fields
-- If a candidate is in ML/AI → gaps: MLOps, model deployment, deep learning, experiment tracking — NOT DevOps or frontend
-- If a candidate is in frontend → gaps: React advanced patterns, TypeScript, testing — NOT ML or databases  
-- If a candidate is in backend → gaps: system design, caching, message queues — NOT UI or data science
-- If a candidate is in Data Science → gaps: ML pipelines, statistics, visualization tools — NOT networking or cloud infra
-- If a candidate is in Marketing → gaps: SEO/SEM, Google Analytics, content strategy, email marketing, CRM tools (HubSpot/Salesforce), paid ads (Meta Ads, Google Ads), A/B testing — NOT programming or DevOps
-- If a candidate is in Product Management → gaps: roadmapping, user research, Jira, stakeholder management, product metrics — NOT coding or infrastructure
-- If a candidate is in Design (UI/UX) → gaps: Figma advanced, user research, accessibility, design systems, prototyping — NOT backend or ML
-- If a candidate is in Finance/Accounting → gaps: financial modeling, Excel advanced, Power BI, budgeting tools — NOT programming
-- If a candidate is in HR → gaps: HRIS tools, talent acquisition, performance management, labor laws — NOT technical skills
-- If a candidate is in Sales → gaps: CRM (Salesforce), negotiation, pipeline management, outbound prospecting — NOT coding
-- For ANY domain: only suggest skills that a hiring manager in THAT specific field would actually look for
-- Do NOT suggest cloud/DevOps/programming skills unless the resume clearly shows technical work
-- roadmap weeks must follow this order: highest priority missing skill first, lowest priority last
+    # NOTE: All rules are OUTSIDE the JSON block — never put plain text inside JSON
+    return f"""You are a strict ATS system and career coach. Be brutally honest. Do NOT inflate scores.
+
+=== SCORING RULES (follow strictly) ===
+- Generic phrases only ("motivated", "detail-oriented", "strong background") with no specifics → score 10-25
+- Has sections but no specific tech/tools/company names → score 25-40
+- Has real skills listed but missing experience details or metrics → score 40-60
+- Has skills + experience + projects but no quantified results → score 60-75
+- Has everything above PLUS quantified achievements → score 75-90
+- NEVER give above 50 unless real company names, technologies, or project names are present
+- NEVER give above 65 unless there is at least one quantified achievement (e.g. "reduced latency by 40%")
+
+=== MANDATORY SECTIONS — deduct if missing ===
+- Contact Info → missing = -15 pts
+- Work Experience with dates/company → missing = -25 pts
+- Education with degree/institution → missing = -15 pts
+- Skills section with specific tools → missing = -20 pts
+- Projects with tech stack → missing = -10 pts
+
+=== DOMAIN RULES — critical ===
+- Identify the candidate's PRIMARY domain from their resume
+- missing_skills MUST only contain skills from THEIR domain
+- If ML/AI → gaps: MLOps, model deployment, deep learning, experiment tracking — NOT DevOps or frontend
+- If frontend → gaps: React advanced, TypeScript, testing — NOT ML or databases
+- If backend → gaps: system design, caching, message queues — NOT UI or data science
+- If Data Science → gaps: ML pipelines, statistics, visualization tools — NOT networking
+- If Marketing → gaps: SEO/SEM, Google Analytics, HubSpot, Meta Ads, A/B testing — NOT programming
+- If Product Management → gaps: roadmapping, user research, Jira, product metrics — NOT coding
+- If Design (UI/UX) → gaps: Figma advanced, user research, accessibility, design systems — NOT backend
+- If Finance → gaps: financial modeling, Excel advanced, Power BI — NOT programming
+- If HR → gaps: HRIS tools, talent acquisition, performance management — NOT technical skills
+- If Sales → gaps: CRM (Salesforce), negotiation, pipeline management — NOT coding
+- Do NOT suggest cloud/DevOps/programming unless resume clearly shows technical work
+
+=== ROADMAP RULES ===
+- Each week focus MUST be one of the missing_skills listed — no other skills
+- Order: highest priority gap first, lowest last
+- Do NOT include skills the candidate already has
+- Stay within their domain only
+
+=== INTERVIEW RULES ===
+- Return EXACTLY 5 technical questions and EXACTLY 3 behavioural questions
+- Technical questions must be specific to the candidate's actual skills and domain
+- For non-tech domains (marketing, HR, sales) — "technical" means domain-specific knowledge questions
+
 Resume:
 {resume_text}
 
 {github_section}
 
-Return ONLY valid JSON, no markdown, no code fences, no extra text:
+Return ONLY valid JSON. No markdown, no code fences, no extra text before or after the JSON:
 {{
-  "ats_score": <0-100>,
-  "ats_breakdown": {{"keyword_match": <0-100>, "formatting": <0-100>, "section_completeness": <0-100>, "action_verbs": <0-100>}},
-  "ats_summary": "<2 sentences>",
+  "ats_score": <number 0-100>,
+  "ats_breakdown": {{
+    "keyword_match": <number 0-100>,
+    "formatting": <number 0-100>,
+    "section_completeness": <number 0-100>,
+    "action_verbs": <number 0-100>
+  }},
+  "ats_summary": "<2 honest sentences — state clearly what is missing if resume is weak>",
   "top_roles": [
-    {{"role": "<role>", "match": <0-100>, "reason": "<one line>"}},
-    {{"role": "<role>", "match": <0-100>, "reason": "<one line>"}},
-    {{"role": "<role>", "match": <0-100>, "reason": "<one line>"}}
+    {{"role": "<role name>", "match": <number 0-100>, "reason": "<one line why>"}},
+    {{"role": "<role name>", "match": <number 0-100>, "reason": "<one line why>"}},
+    {{"role": "<role name>", "match": <number 0-100>, "reason": "<one line why>"}}
   ],
-  "matched_skills": ["<skill>"],
+  "matched_skills": ["<skill>", "<skill>"],
   "missing_skills": [
-    {{"skill": "<skill>", "priority": "high|medium|low", "why": "<one line>"}},
-    {{"skill": "<skill>", "priority": "high|medium|low", "why": "<one line>"}},
-    {{"skill": "<skill>", "priority": "high|medium|low", "why": "<one line>"}},
-    {{"skill": "<skill>", "priority": "high|medium|low", "why": "<one line>"}},
-    {{"skill": "<skill>", "priority": "high|medium|low", "why": "<one line>"}}
+    {{"skill": "<domain-specific skill only>", "priority": "high|medium|low", "why": "<one line>"}},
+    {{"skill": "<domain-specific skill only>", "priority": "high|medium|low", "why": "<one line>"}},
+    {{"skill": "<domain-specific skill only>", "priority": "high|medium|low", "why": "<one line>"}},
+    {{"skill": "<domain-specific skill only>", "priority": "high|medium|low", "why": "<one line>"}},
+    {{"skill": "<domain-specific skill only>", "priority": "high|medium|low", "why": "<one line>"}}
   ],
   "resume_improvements": [
-    {{"area": "<area>", "issue": "<issue>", "fix": "<fix>"}},
-    {{"area": "<area>", "issue": "<issue>", "fix": "<fix>"}},
-    {{"area": "<area>", "issue": "<issue>", "fix": "<fix>"}},
-    {{"area": "<area>", "issue": "<issue>", "fix": "<fix>"}}
+    {{"area": "<area>", "issue": "<what is wrong>", "fix": "<exact fix>"}},
+    {{"area": "<area>", "issue": "<what is wrong>", "fix": "<exact fix>"}},
+    {{"area": "<area>", "issue": "<what is wrong>", "fix": "<exact fix>"}},
+    {{"area": "<area>", "issue": "<what is wrong>", "fix": "<exact fix>"}}
   ],
   "roadmap": [
-    {{"week": "Week 1-2", "focus": "<missing_skill #1 — highest priority>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
-    {{"week": "Week 3-4", "focus": "<missing_skill #2>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
-    {{"week": "Week 5-6", "focus": "<missing_skill #3>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
-    {{"week": "Week 7-8", "focus": "<missing_skill #4>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}}
+    {{"week": "Week 1-2", "focus": "<missing_skill #1 highest priority>", "goal": "<what they can do after this>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
+    {{"week": "Week 3-4", "focus": "<missing_skill #2>", "goal": "<what they can do after this>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
+    {{"week": "Week 5-6", "focus": "<missing_skill #3>", "goal": "<what they can do after this>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
+    {{"week": "Week 7-8", "focus": "<missing_skill #4>", "goal": "<what they can do after this>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}}
   ],
-  ROADMAP RULES: Each week focus MUST match one of the missing_skills exactly. Do NOT include skills the candidate already has. Stay within their domain only.
   "interview_questions": {{
     "technical": [
-      {{"question": "<technical q 1 specific to their skills>", "tip": "<answer tip>"}},
-      {{"question": "<technical q 2 specific to their skills>", "tip": "<answer tip>"}},
-      {{"question": "<technical q 3 specific to their skills>", "tip": "<answer tip>"}},
-      {{"question": "<technical q 4 specific to their skills>", "tip": "<answer tip>"}},
-      {{"question": "<technical q 5 specific to their skills>", "tip": "<answer tip>"}}
+      {{"question": "<domain-specific q 1>", "tip": "<answer tip>"}},
+      {{"question": "<domain-specific q 2>", "tip": "<answer tip>"}},
+      {{"question": "<domain-specific q 3>", "tip": "<answer tip>"}},
+      {{"question": "<domain-specific q 4>", "tip": "<answer tip>"}},
+      {{"question": "<domain-specific q 5>", "tip": "<answer tip>"}}
     ],
     "behavioural": [
       {{"question": "<behavioural q 1>", "tip": "<answer tip>"}},
@@ -133,12 +166,11 @@ Return ONLY valid JSON, no markdown, no code fences, no extra text:
       {{"question": "<behavioural q 3>", "tip": "<answer tip>"}}
     ]
   }},
-  IMPORTANT: You MUST return EXACTLY 5 technical questions and EXACTLY 3 behavioural questions. No more, no less.
   "github_analysis": {{
-    "overall_score": <0-100>,
-    "strengths": ["<s>", "<s>", "<s>"],
-    "gaps": ["<g>", "<g>", "<g>"],
-    "improvements": ["<i>", "<i>", "<i>"],
+    "overall_score": <number 0-100>,
+    "strengths": ["<strength>", "<strength>", "<strength>"],
+    "gaps": ["<gap>", "<gap>", "<gap>"],
+    "improvements": ["<improvement>", "<improvement>", "<improvement>"],
     "note": "<note or empty string>"
   }}
 }}"""
@@ -188,7 +220,7 @@ def fallback_response(error: str) -> dict:
     }
 
 
-# ─── Main Analysis — explicit calls, no loop ─────────────────────────────────
+# ─── Main Analysis ────────────────────────────────────────────────────────────
 
 def analyze_with_ai(resume_text: str, github_url: Optional[str] = None) -> dict:
     prompt     = build_prompt(resume_text, github_url)

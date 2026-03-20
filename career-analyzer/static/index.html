@@ -200,7 +200,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
       <button class="stab" onclick="showSection('improvements',this)">Improvements</button>
       <button class="stab" onclick="showSection('roadmap',this)">Road Map</button>
       <button class="stab" onclick="showSection('interview',this)">Interview Prep</button>
-      <button class="stab" onclick="showSection('github',this)">GitHub</button>
+      <button class="stab" id="tab-github" onclick="showSection('github',this)">GitHub</button>
     </div>
 
     <!-- ATS -->
@@ -364,6 +364,8 @@ async function runAnalysis() {
     }, i * 800);
   });
 
+  window._githubProvided = !!github;
+
   const form = new FormData();
   form.append('file', fileInput.files[0]);
   if (github) form.append('github_url', github);
@@ -386,6 +388,19 @@ async function runAnalysis() {
 function renderDashboard(d, detectedRole) {
   document.getElementById('nav-role').textContent = detectedRole;
   document.getElementById('dashboard-page').style.display = 'block';
+
+  // Hide GitHub tab if no URL was provided
+  const ghTab = document.getElementById('tab-github');
+  if (!window._githubProvided) {
+    ghTab.style.display = 'none';
+    document.getElementById('sec-github').classList.remove('active');
+    // If github was the active tab, switch to ATS
+    if (document.getElementById('sec-github').classList.contains('active')) {
+      showSection('ats', document.querySelector('.stab'));
+    }
+  } else {
+    ghTab.style.display = 'inline-block';
+  }
 
   // ATS ring
   const score = d.ats_score || 0;
@@ -538,6 +553,7 @@ function goBack() {
   document.getElementById('dashboard-page').style.display = 'none';
   document.getElementById('upload-page').style.display = 'flex';
   document.getElementById('loader-steps').innerHTML = '';
+  window._githubProvided = false;
 }
 </script>
 </body>
