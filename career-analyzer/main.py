@@ -15,12 +15,14 @@ load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 GROQ_API_KEY   = os.getenv("GROQ_API_KEY", "")
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+MAX_FILE_SIZE  = 5 * 1024 * 1024  # 5 MB
 
 app = FastAPI(title="Career Analyzer")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
-# health test
+
+# ─── Health ───────────────────────────────────────────────────────────────────
+
 @app.get("/health")
 def health():
     return {
@@ -65,8 +67,16 @@ No GitHub URL provided. Infer github_analysis from resume projects:
 - note: "Estimated from resume — share your GitHub for accurate analysis"
 """
 
-    return f"""You are a career coach and ATS specialist. Analyze this resume and infer the best job roles — do NOT ask for input.
-
+    return f"""DOMAIN RULES — critical, follow strictly:
+- Read the resume carefully and identify the candidate's PRIMARY domain (e.g. if they have Python/ML/data skills → their domain is Data Science/ML, NOT DevOps or cloud)
+- missing_skills MUST only contain skills relevant to THEIR domain — do NOT suggest skills from unrelated fields
+- If a candidate is in ML/AI, gaps should be things like MLOps, model deployment, deep learning — NOT Kubernetes, Terraform, or network security
+- If a candidate is in frontend, gaps should be React advanced patterns, TypeScript, testing — NOT machine learning or databases
+- If a candidate is in backend, gaps should be system design, caching, message queues — NOT UI design or data science
+- roadmap MUST directly address ONLY the missing_skills listed — each week's focus must be one of those exact missing skills
+- Do NOT add weeks for skills the candidate already has
+- Do NOT suggest cloud/DevOps skills unless the resume clearly shows cloud or DevOps work
+- roadmap weeks must follow this order: highest priority missing skill first, lowest priority last
 Resume:
 {resume_text}
 
@@ -97,25 +107,27 @@ Return ONLY valid JSON, no markdown, no code fences, no extra text:
     {{"area": "<area>", "issue": "<issue>", "fix": "<fix>"}}
   ],
   "roadmap": [
-    {{"week": "Week 1-2", "focus": "<skill>", "goal": "<goal>", "resources": [{{"title": "<title>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
-    {{"week": "Week 3-4", "focus": "<skill>", "goal": "<goal>", "resources": [{{"title": "<title>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
-    {{"week": "Week 5-6", "focus": "<skill>", "goal": "<goal>", "resources": [{{"title": "<title>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
-    {{"week": "Week 7-8", "focus": "<skill>", "goal": "<goal>", "resources": [{{"title": "<title>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}}
+    {{"week": "Week 1-2", "focus": "<missing_skill #1 — highest priority>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
+    {{"week": "Week 3-4", "focus": "<missing_skill #2>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
+    {{"week": "Week 5-6", "focus": "<missing_skill #3>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}},
+    {{"week": "Week 7-8", "focus": "<missing_skill #4>", "goal": "<what they will be able to do after this week>", "resources": [{{"title": "<real resource name>", "platform": "YouTube|Coursera|Udemy|Docs", "url": "#"}}]}}
   ],
+  ROADMAP RULES: Each week focus MUST match one of the missing_skills exactly. Do NOT include skills the candidate already has. Stay within their domain only.
   "interview_questions": {{
     "technical": [
-      {{"question": "<q>", "tip": "<tip>"}},
-      {{"question": "<q>", "tip": "<tip>"}},
-      {{"question": "<q>", "tip": "<tip>"}},
-      {{"question": "<q>", "tip": "<tip>"}},
-      {{"question": "<q>", "tip": "<tip>"}}
+      {{"question": "<technical q 1 specific to their skills>", "tip": "<answer tip>"}},
+      {{"question": "<technical q 2 specific to their skills>", "tip": "<answer tip>"}},
+      {{"question": "<technical q 3 specific to their skills>", "tip": "<answer tip>"}},
+      {{"question": "<technical q 4 specific to their skills>", "tip": "<answer tip>"}},
+      {{"question": "<technical q 5 specific to their skills>", "tip": "<answer tip>"}}
     ],
     "behavioural": [
-      {{"question": "<q>", "tip": "<tip>"}},
-      {{"question": "<q>", "tip": "<tip>"}},
-      {{"question": "<q>", "tip": "<tip>"}}
+      {{"question": "<behavioural q 1>", "tip": "<answer tip>"}},
+      {{"question": "<behavioural q 2>", "tip": "<answer tip>"}},
+      {{"question": "<behavioural q 3>", "tip": "<answer tip>"}}
     ]
   }},
+  IMPORTANT: You MUST return EXACTLY 5 technical questions and EXACTLY 3 behavioural questions. No more, no less.
   "github_analysis": {{
     "overall_score": <0-100>,
     "strengths": ["<s>", "<s>", "<s>"],
@@ -170,83 +182,80 @@ def fallback_response(error: str) -> dict:
     }
 
 
-# ─── Main Analysis ────────────────────────────────────────────────────────────
+# ─── Main Analysis — explicit calls, no loop ─────────────────────────────────
 
 def analyze_with_ai(resume_text: str, github_url: Optional[str] = None) -> dict:
-    prompt = build_prompt(resume_text, github_url)
+    prompt     = build_prompt(resume_text, github_url)
     system_msg = "You are a career analysis expert. Return only valid JSON. No markdown, no code fences, no extra text."
 
-    # Groq first (fast, free) → NVIDIA fallback
-    providers = [
-        {
-            "name": "Groq",
-            "url": "https://api.groq.com/openai/v1/chat/completions",
-            "key": GROQ_API_KEY,
-            "payload": {
-                "model": "llama3-8b-8192", 
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user",   "content": prompt}
-                ],
-                "max_tokens": 4096,
-                "temperature": 0.3,
-                "stream": False
-            }
-        },
-        {
-            "name": "NVIDIA",
-            "url": "https://integrate.api.nvidia.com/v1/chat/completions",
-            "key": NVIDIA_API_KEY,
-            "payload": {
-                "model": "qwen/qwen3.5-122b-a10b",
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user",   "content": prompt}
-                ],
-                "max_tokens": 8192,
-                "temperature": 0.4,
-                "stream": False,
-                "chat_template_kwargs": {"enable_thinking": False}
-            }
-        }
-    ]
-
-    last_error = "No providers attempted"
-
-    for provider in providers:
-        if not provider["key"]:
-            print(f"Skipping {provider['name']} — key not in .env")
-            continue
-
-        headers = {
-            "Authorization": f"Bearer {provider['key']}",
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-
+    # ── Groq (primary — fast, free) ───────────────────────────────────────────
+    if GROQ_API_KEY:
         try:
-            print(f"Trying {provider['name']}...")
-            response = requests.post(provider["url"], headers=headers, json=provider["payload"], timeout=60)
-
-            if response.status_code == 200:
-                raw = response.json()["choices"][0]["message"]["content"]
-                print(f"Success with {provider['name']}")
-                return parse_json(raw)
-
-            last_error = f"{provider['name']} {response.status_code}: {response.text[:200]}"
-            print(last_error)
-
+            print("Trying Groq...")
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user",   "content": prompt}
+                    ],
+                    "max_tokens": 6000,
+                    "temperature": 0.3,
+                    "stream": False
+                },
+                timeout=60
+            )
+            if resp.status_code == 200:
+                print("Success with Groq")
+                return parse_json(resp.json()["choices"][0]["message"]["content"])
+            print(f"Groq {resp.status_code}: {resp.text[:300]}")
         except requests.exceptions.Timeout:
-            last_error = f"{provider['name']} timed out"
-            print(last_error)
+            print("Groq timed out")
         except requests.exceptions.ConnectionError:
-            last_error = f"{provider['name']} connection error"
-            print(last_error)
+            print("Groq connection error")
         except Exception as e:
-            last_error = f"{provider['name']} error: {str(e)}"
-            print(last_error)
+            print(f"Groq error: {e}")
 
-    return fallback_response(last_error)
+    # ── NVIDIA (fallback) ─────────────────────────────────────────────────────
+    if NVIDIA_API_KEY:
+        try:
+            print("Trying NVIDIA...")
+            resp = requests.post(
+                "https://integrate.api.nvidia.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "qwen/qwen3.5-122b-a10b",
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user",   "content": prompt}
+                    ],
+                    "max_tokens": 8192,
+                    "temperature": 0.4,
+                    "stream": False,
+                    "chat_template_kwargs": {"enable_thinking": False}
+                },
+                timeout=60
+            )
+            if resp.status_code == 200:
+                print("Success with NVIDIA")
+                return parse_json(resp.json()["choices"][0]["message"]["content"])
+            print(f"NVIDIA {resp.status_code}: {resp.text[:300]}")
+        except requests.exceptions.Timeout:
+            print("NVIDIA timed out")
+        except requests.exceptions.ConnectionError:
+            print("NVIDIA connection error")
+        except Exception as e:
+            print(f"NVIDIA error: {e}")
+
+    return fallback_response("All providers failed or no API keys configured")
 
 
 # ─── Endpoint ─────────────────────────────────────────────────────────────────
@@ -256,24 +265,25 @@ async def analyze_resume(
     file: UploadFile = File(...),
     github_url: Optional[str] = Form(None)
 ):
-    # Test 5 — wrong file type (PNG, DOCX etc.)
+    # File type check
     if file.content_type != "application/pdf" and not file.filename.lower().endswith(".pdf"):
         return {"error": "Only PDF files are accepted. Please upload a .pdf resume."}
 
     content = await file.read()
 
-    # Test 6 — file too large (server-side, catches what browser misses)
+    # File size check
     if len(content) > MAX_FILE_SIZE:
         return {"error": f"File too large ({len(content)//1024}KB). Maximum allowed is 5MB."}
 
-    # Test 2/5 — scanned PDF with no text layer
+    # Text extraction
     resume_text = extract_text_from_pdf(content)
     if len(resume_text) < 50:
         return {"error": "Could not extract text. Please upload a text-based PDF, not a scanned image."}
 
-    # Test 3/4 — github_url present or absent drives github_analysis.note
     return analyze_with_ai(resume_text, github_url or None)
 
+
+# ─── Serve Frontend ───────────────────────────────────────────────────────────
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
