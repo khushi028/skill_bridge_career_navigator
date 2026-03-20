@@ -70,12 +70,18 @@ No GitHub URL provided. Infer github_analysis from resume projects:
     return f"""DOMAIN RULES — critical, follow strictly:
 - Read the resume carefully and identify the candidate's PRIMARY domain (e.g. if they have Python/ML/data skills → their domain is Data Science/ML, NOT DevOps or cloud)
 - missing_skills MUST only contain skills relevant to THEIR domain — do NOT suggest skills from unrelated fields
-- If a candidate is in ML/AI, gaps should be things like MLOps, model deployment, deep learning — NOT Kubernetes, Terraform, or network security
-- If a candidate is in frontend, gaps should be React advanced patterns, TypeScript, testing — NOT machine learning or databases
-- If a candidate is in backend, gaps should be system design, caching, message queues — NOT UI design or data science
-- roadmap MUST directly address ONLY the missing_skills listed — each week's focus must be one of those exact missing skills
-- Do NOT add weeks for skills the candidate already has
-- Do NOT suggest cloud/DevOps skills unless the resume clearly shows cloud or DevOps work
+- If a candidate is in ML/AI → gaps: MLOps, model deployment, deep learning, experiment tracking — NOT DevOps or frontend
+- If a candidate is in frontend → gaps: React advanced patterns, TypeScript, testing — NOT ML or databases  
+- If a candidate is in backend → gaps: system design, caching, message queues — NOT UI or data science
+- If a candidate is in Data Science → gaps: ML pipelines, statistics, visualization tools — NOT networking or cloud infra
+- If a candidate is in Marketing → gaps: SEO/SEM, Google Analytics, content strategy, email marketing, CRM tools (HubSpot/Salesforce), paid ads (Meta Ads, Google Ads), A/B testing — NOT programming or DevOps
+- If a candidate is in Product Management → gaps: roadmapping, user research, Jira, stakeholder management, product metrics — NOT coding or infrastructure
+- If a candidate is in Design (UI/UX) → gaps: Figma advanced, user research, accessibility, design systems, prototyping — NOT backend or ML
+- If a candidate is in Finance/Accounting → gaps: financial modeling, Excel advanced, Power BI, budgeting tools — NOT programming
+- If a candidate is in HR → gaps: HRIS tools, talent acquisition, performance management, labor laws — NOT technical skills
+- If a candidate is in Sales → gaps: CRM (Salesforce), negotiation, pipeline management, outbound prospecting — NOT coding
+- For ANY domain: only suggest skills that a hiring manager in THAT specific field would actually look for
+- Do NOT suggest cloud/DevOps/programming skills unless the resume clearly shows technical work
 - roadmap weeks must follow this order: highest priority missing skill first, lowest priority last
 Resume:
 {resume_text}
