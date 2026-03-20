@@ -34,7 +34,10 @@ It's an AI-Powered Career Analyzer — Resume intelligence tool that parses a PD
 Create a `.env` file in the project root. **On Windows, use Notepad (File → Save As → Encoding: UTF-8)** — do not use `echo` in PowerShell as it creates UTF-16 files that break python-dotenv.
 
 ```
-
+GROQ_API_KEY=""
+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
+NVIDIA_API_KEY=""
+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
 ```
 
 ### Run Commands

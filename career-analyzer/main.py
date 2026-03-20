@@ -18,11 +18,18 @@ NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 
 app = FastAPI(title="Career Analyzer")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 # health test
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "providers": {
+            "groq":   "configured" if GROQ_API_KEY   else "missing — set GROQ_API_KEY in .env",
+            "nvidia": "configured" if NVIDIA_API_KEY else "missing — set NVIDIA_API_KEY in .env"
+        }
+    }
 
 
 # ─── PDF Text Extraction ──────────────────────────────────────────────────────
@@ -249,11 +256,23 @@ async def analyze_resume(
     file: UploadFile = File(...),
     github_url: Optional[str] = Form(None)
 ):
+    # Test 5 — wrong file type (PNG, DOCX etc.)
+    if file.content_type != "application/pdf" and not file.filename.lower().endswith(".pdf"):
+        return {"error": "Only PDF files are accepted. Please upload a .pdf resume."}
+
     content = await file.read()
+
+    # Test 6 — file too large (server-side, catches what browser misses)
+    if len(content) > MAX_FILE_SIZE:
+        return {"error": f"File too large ({len(content)//1024}KB). Maximum allowed is 5MB."}
+
+    # Test 2/5 — scanned PDF with no text layer
     resume_text = extract_text_from_pdf(content)
     if len(resume_text) < 50:
-        return {"error": "Could not extract text. Please upload a text-based PDF."}
-    return analyze_with_ai(resume_text, github_url)
+        return {"error": "Could not extract text. Please upload a text-based PDF, not a scanned image."}
+
+    # Test 3/4 — github_url present or absent drives github_analysis.note
+    return analyze_with_ai(resume_text, github_url or None)
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
